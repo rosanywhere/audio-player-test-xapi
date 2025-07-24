@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Custom Audio Player with xAPI Tracking</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        audio { width: 100%; margin-top: 20px; }
+        #log { margin-top: 20px; white-space: pre-wrap; background: #f0f0f0; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h2>Podcast Player</h2>
+    <audio id="audioPlayer" controls>
+        <source src= "TheDeepDive_Runway_WelcometoRealEstate.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <div id="log"></div>
+
+    <script>
+        const audio = document.getElementById('audioPlayer');
+        const logDiv = document.getElementById('log');
+
+        // Placeholder for xAPI configuration
+        const xapiConfig = {
+            endpoint: "https://watershedlrs.com/api/organizations/26474/lrs/",
+            username: "2865bd17a51a4d",
+            password: "a8227a92cb8c2e",
+            actor: {
+                name: "Ros McNamee",
+                mbox: "mailto:ros.mcnamee@anywhere.com"
+            },
+            object: {
+                id: "http://example.com/audio/podcast1",
+                name: "Podcast Episode 1",
+                description: "An engaging podcast episode."
+            }
+        };
+
+        function log(message) {
+            console.log(message);
+            logDiv.textContent += message + "\n";
+        }
+
+        function sendXAPIStatement(verbId, verbDisplay, resultExtensions = {}) {
+            const statement = {
+                actor: xapiConfig.actor,
+                verb: {
+                    id: verbId,
+                    display: { "en-US": verbDisplay }
+                },
+                object: {
+                    id: xapiConfig.object.id,
+                    definition: {
+                        name: { "en-US": xapiConfig.object.name },
+                        description: { "en-US": xapiConfig.object.description }
+                    },
+                    objectType: "Activity"
+                },
+                result: {
+                    extensions: resultExtensions
+                }
+            };
+
+            fetch(xapiConfig.endpoint, {
+                method: "POST",
+                headers: {
+                    "Authorization": "Basic " + btoa(xapiConfig.username + ":" + xapiConfig.password),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(statement)
+            }).then(response => {
+                if (response.ok) {
+                    log("xAPI statement sent: " + verbDisplay);
+                } else {
+                    log("Failed to send xAPI statement: " + response.status);
+                }
+            }).catch(error => {
+                log("Error sending xAPI statement: " + error);
+            });
+        }
+
+        audio.addEventListener('play', () => {
+            sendXAPIStatement("http://adlnet.gov/expapi/verbs/played", "played");
+        });
+
+        audio.addEventListener('pause', () => {
+            const progress = audio.currentTime / audio.duration;
+            sendXAPIStatement("http://adlnet.gov/expapi/verbs/paused", "paused", {
+                "http://example.com/extensions/progress": progress
+            });
+        });
+
+        audio.addEventListener('ended', () => {
+            sendXAPIStatement("http://adlnet.gov/expapi/verbs/completed", "completed", {
+                "http://example.com/extensions/progress": 1.0
+            });
+        });
+    </script>
+</body>
+</html>
