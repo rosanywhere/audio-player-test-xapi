@@ -43,25 +43,54 @@
             logDiv.textContent += message + "\n";
         }
 
-        function sendXAPIStatement(verbId, verbDisplay, resultExtensions = {}) {
-            const statement = {
-                actor: xapiConfig.actor,
-                verb: {
-                    id: verbId,
-                    display: { "en-US": verbDisplay }
-                },
-                object: {
-                    id: xapiConfig.object.id,
-                    definition: {
-                        name: { "en-US": xapiConfig.object.name },
-                        description: { "en-US": xapiConfig.object.description }
-                    },
-                    objectType: "Activity"
-                },
-                result: {
-                    extensions: resultExtensions
-                }
-            };
+        
+function sendXAPIStatement(verbId, verbDisplay, resultExtensions = {}) {
+    const statement = {
+        actor: {
+            name: xapiConfig.actor.name,
+            mbox: xapiConfig.actor.mbox
+        },
+        verb: {
+            id: verbId,
+            display: { "en-US": verbDisplay }
+        },
+        object: {
+            id: xapiConfig.object.id,
+            objectType: "Activity",
+            definition: {
+                name: { "en-US": xapiConfig.object.name },
+                description: { "en-US": xapiConfig.object.description },
+                type: "http://adlnet.gov/expapi/activities/media"
+            }
+        },
+        result: {
+            extensions: resultExtensions
+        }
+    };
+
+    console.log("Sending xAPI statement:", JSON.stringify(statement, null, 2));
+
+    fetch(xapiConfig.endpoint, {
+        method: "POST",
+        headers: {
+            "Authorization": "Basic " + btoa(xapiConfig.username + ":" + xapiConfig.password),
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(statement)
+    })
+    .then(response => {
+        if (response.ok) {
+            log("xAPI statement sent: " + verbDisplay);
+        } else {
+            log("Failed to send xAPI statement: " + response.status + " " + response.statusText);
+            response.text().then(text => log("Response body: " + text));
+        }
+    })
+    .catch(error => {
+        log("Error sending xAPI statement: " + error);
+    });
+}
+
 
             fetch(xapiConfig.endpoint, {
                 method: "POST",
